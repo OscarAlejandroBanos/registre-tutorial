@@ -2,7 +2,7 @@
 <html lang="ca">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-QG3bhAUD5shZfHoAiFx6VofP9DrVgKFoJEwcKiREtDc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://generativelanguage.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-KM1vvF2mrKwnDVcrwBxFkEdFYnHabyyu9vagfId9go0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://generativelanguage.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1D4A39">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -210,7 +210,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
         <li>A l’ordinador també pots prémer «Copia B–F» en una fila i enganxar-la a la columna B de l’alumne, al teu registre.</li>
       </ol>
       <p>Si dius quan te’n vas adonar, la setmana de detecció és la d’aquell dia; si no, la del primer contacte. Si no dius cap data, queden en blanc perquè les omplis tu.</p>
-      <p>La veu la transcriu el navegador i el text s’envia a Gemini (capa gratuïta de Google) per omplir les columnes. Les files i la clau es queden en aquest dispositiu. No diguis DNI ni diagnòstics.</p>
+      <p>La veu la transcriu el navegador i el text s’envia a Gemini (capa gratuïta de Google) per omplir les columnes. Les files i la clau es queden en aquest dispositiu. No diguis noms ni DNI.</p>
     </div>
   </details>
 </div>
@@ -270,16 +270,18 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   // Short on purpose: it goes with every request.
   const SYS = [
     "Omples el «Registre de seguiment de les accions tutorials» d'un centre de formació d'adults a partir del dictat d'un tutor (en català o castellà; pot tenir errors de transcripció). Escriu sempre en català, en to de registre administratiu però complet: recull tots els detalls que es diguin (motius, circumstàncies, intents de contacte amb data i mitjà, què ha dit l'alumne, acords, compromisos, terminis i properes passes), en frases completes i clares acabades en punt.",
+    "Noms de cursos, nivells i grups com a noms propis: majúscula inicial i números en xifres («Castellà 3», «Català 2», «Anglès A2», «GES 1», «grup de tarda»); mai «castellà tres».",
     "Fes una fila per alumne i acció, en l'ordre del dictat.",
     "ref: com s'anomena l'alumne al dictat («alumne 1», «el segon», inicials); mai un nom complet.",
     "setmana: quan es va detectar l'absència. Si es dicta un període explícit, «dd/mm-dd/mm». Si es diu un dia o una setmana («me'n vaig adonar dilluns», «des del dia 15», «la setmana passada»), posa aquell dia com a «dd/mm/aaaa» (d'una setmana, el seu dilluns). Buit si no es diu.",
     "data: data del primer contacte o intent, «dd/mm/aaaa». Si només es diu el dia del mes («el 22»), és el d'aquest mes, o del mes anterior si encara no ha arribat. Buit si no es diu.",
     "mitja: Trucada, Correu, Missatge (WhatsApp, SMS, Classroom…), Presencial, Videotrucada, o «—» si el tutor no ha contactat (p. ex. l'alumne ja havia avisat).",
     "resum: resposta de l'alumne o motiu de l'absència, amb tots els detalls que s'hagin dit. Si no contesta: «Sense resposta.» i cada intent posterior amb data i mitjà.",
-    "acord: acords, compromisos i data prevista d'incorporació, amb tots els detalls dits (canvi de grup, derivació, seguiment previst…); buit si no n'hi ha.",
-    "No inventis res que no s'hagi dit. Cap nom de persona. Salut: només «Baixa mèdica» o «Motius de salut», sense diagnòstics.",
+    "acord: acords, compromisos i data prevista d'incorporació, amb tots els detalls dits (derivació, seguiment previst…); buit si no n'hi ha.",
+    "canvi_grup: true si es parla d'un canvi de grup, de torn o d'horari de grup (demanat, proposat, provisional o fet); si no, false. Quan és true, acord comença per «Canvi de grup:» amb el grup d'origen i el de destinació si es diuen (p. ex. «Canvi de grup: de Castellà 3 matí a Castellà 3 tarda, provisional.»).",
+    "No inventis res que no s'hagi dit. Cap nom de persona.",
   ].join("\n");
-  const FORMAT = 'Respon només amb JSON: {"files":[{"ref":"","setmana":"","data":"","mitja":"","resum":"","acord":""}]}';
+  const FORMAT = 'Respon només amb JSON: {"files":[{"ref":"","setmana":"","data":"","mitja":"","resum":"","acord":"","canvi_grup":false}]}';
   const STR = { type: "STRING" };
   const SCHEMA = {
     type: "OBJECT",
@@ -288,9 +290,9 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
         type: "ARRAY",
         items: {
           type: "OBJECT",
-          properties: { ref: STR, setmana: STR, data: STR, mitja: { type: "STRING", enum: MITJANS }, resum: STR, acord: STR },
-          required: ["ref", "setmana", "data", "mitja", "resum", "acord"],
-          propertyOrdering: ["ref", "setmana", "data", "mitja", "resum", "acord"],
+          properties: { ref: STR, setmana: STR, data: STR, mitja: { type: "STRING", enum: MITJANS }, resum: STR, acord: STR, canvi_grup: { type: "BOOLEAN" } },
+          required: ["ref", "setmana", "data", "mitja", "resum", "acord", "canvi_grup"],
+          propertyOrdering: ["ref", "setmana", "data", "mitja", "resum", "acord", "canvi_grup"],
         },
       },
     },
@@ -380,6 +382,10 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   function normRow(r) {
     const o = r && typeof r === "object" ? r : {};
     const data = normDate(clean(o.data));
+    let acord = endDot(clean(o.acord));
+    // A flagged group change always says so in the agreement, so the card and the Excel colour it.
+    const flagged = o.canvi_grup === true || String(o.canvi_grup).toLowerCase() === "true";
+    if (flagged && !(/canvi/i.test(acord) && /grup/i.test(acord))) acord = "Canvi de grup." + (acord ? " " + acord : "");
     return {
       id: uid(),
       ref: clean(o.ref).slice(0, 40) || "alumne/a",
@@ -389,7 +395,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
       data,
       mitja: normMitja(clean(o.mitja)),
       resum: endDot(clean(o.resum)),
-      acord: endDot(clean(o.acord)),
+      acord,
     };
   }
   function tint(r) {
