@@ -2,6 +2,7 @@
 <html lang="ca">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-gpohop6PAQa+4DOQL7PX1zf4fPSkn3CrJmiaKl4ebx4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://generativelanguage.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1D4A39">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -108,6 +109,8 @@ h3 { margin: 16px 0 6px; font: 700 15px/1.3 var(--display); }
 .tag { padding: 2px 9px; border-radius: 999px; font: 700 12.5px var(--body); }
 .amber .tag { background: color-mix(in srgb, var(--amber-ink) 14%, transparent); color: var(--amber-ink); }
 .blue .tag { background: color-mix(in srgb, var(--blue-ink) 14%, transparent); color: var(--blue-ink); }
+.mini-copy { margin-left: auto; padding: 8px 11px; font-size: 13.5px; }
+.mini-copy:not([hidden]) + .icon-x { margin-left: 0; }
 .icon-x { margin-left: auto; width: 38px; height: 38px; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); color: var(--muted); font: 400 22px/1 var(--body); cursor: pointer; }
 .f { display: grid; gap: 4px; min-width: 0; }
 .f > span { font-size: 12.5px; font-weight: 700; color: var(--muted); }
@@ -158,7 +161,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
 
   <section class="card setup" id="setup" hidden>
     <h2>Primer cop: la clau gratuïta de Gemini</h2>
-    <p>Crea-la a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> amb el compte de Google del centre i enganxa-la aquí. Es desa només en aquest dispositiu.</p>
+    <p>Crea-la a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> amb el teu compte de Google i enganxa-la aquí. Fes-la en un projecte <b>sense facturació</b>: així és gratuïta i no et poden cobrar res. Es desa només en aquest dispositiu.</p>
     <div class="row">
       <input id="setupKey" type="password" autocomplete="off" spellcheck="false" placeholder="Enganxa la clau (AIza…)" aria-label="Clau de Gemini">
       <button class="btn primary" id="setupSave" type="button">Desa</button>
@@ -204,7 +207,9 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
         <li>Si vols, escriu el nom de cada alumne a la seva fila. El nom no s’envia a Gemini: només va a l’Excel.</li>
         <li>Prem «Exporta a Excel». A l’iPhone s’obre el menú de compartir (correu, WhatsApp o Fitxers); a l’Android i a l’ordinador va a Baixades.</li>
         <li>Obre l’Excel, copia les files i enganxa-les al registre a partir de la columna A.</li>
+        <li>A l’ordinador també pots prémer «Copia B–F» en una fila i enganxar-la a la columna B de l’alumne, al teu registre.</li>
       </ol>
+      <p>Si no dius la setmana de detecció o la data del contacte, queden en blanc perquè les omplis tu.</p>
       <p>La veu la transcriu el navegador i el text s’envia a Gemini (capa gratuïta de Google) per omplir les columnes. Les files i la clau es queden en aquest dispositiu. No diguis DNI ni diagnòstics.</p>
     </div>
   </details>
@@ -230,9 +235,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
       <button class="btn ghost" id="keyDelete" type="button">Esborra-la</button>
     </div>
     <p class="status" id="keyStatus" role="status"></p>
-    <h3>Fes-la servir en un altre dispositiu</h3>
-    <p>Crea un enllaç que ja porta la clau: obre’l al mòbil i queda configurat. Comparteix-lo només amb qui vulguis que faci servir la teva clau.</p>
-    <div class="btnrow"><button class="btn" id="shareCfg" type="button">Envia l’enllaç amb la clau</button></div>
+    <p class="small">La clau es desa només en aquest dispositiu i només s’envia a Google. És gratuïta si el projecte no té la facturació activada; la pàgina no ho pot comprovar.</p>
     <h3>Models</h3>
     <p class="small">En ordre de preferència. Si un esgota la quota gratuïta del dia, es fa servir el següent (es renova cap a les 9:00).</p>
     <input id="modelsInput" autocomplete="off" spellcheck="false" aria-label="Models de Gemini">
@@ -242,7 +245,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
 </dialog>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous"></script>
 <script>
 (() => {
   "use strict";
@@ -262,6 +265,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   const HEAD = ["Alumne/a", "Setmana detecció", "Data 1r contacte", "Mitjà utilitzat", "Resum resposta/motiu", "Acord/data prevista d’incorporació"];
   const WIDTHS = [30, 15, 13, 14, 52, 48]; // same as the register workbook
   const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  const MAX_CHARS = 6000; // longer dictations are refused, never cut
 
   // Short on purpose: it goes with every request.
   const SYS = [
@@ -322,18 +326,25 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   function clean(s) {
     return String(s == null ? "" : s).replace(/[\t\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim().replace(/^[=+\-@]+\s*/, "");
   }
+  const realDate = (d, m, y) => { const t = new Date(y, m - 1, d); return t.getFullYear() === y && t.getMonth() === m - 1 && t.getDate() === d; };
   function normWeek(s) {
     const m = /^(\d{1,2})\/(\d{1,2})\s*[-–—]\s*(\d{1,2})\/(\d{1,2})$/.exec(s);
-    return m ? pad(m[1]) + "/" + pad(m[2]) + "-" + pad(m[3]) + "/" + pad(m[4]) : s;
+    if (!m) return s;
+    // 2024 is a leap year, so 29/02 counts as a real day when no year is given.
+    const ok = realDate(+m[1], +m[2], 2024) && realDate(+m[3], +m[4], 2024);
+    return ok ? pad(m[1]) + "/" + pad(m[2]) + "-" + pad(m[3]) + "/" + pad(m[4]) : "";
   }
   function normDate(s) {
+    let d, mo, y;
     let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
-    if (m) return pad(m[3]) + "/" + pad(m[2]) + "/" + m[1];
-    m = /^(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?$/.exec(s);
-    if (!m) return "";
-    let y = m[3] ? Number(m[3]) : new Date().getFullYear();
-    if (y < 100) y += 2000;
-    return pad(m[1]) + "/" + pad(m[2]) + "/" + y;
+    if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else {
+      m = /^(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?$/.exec(s);
+      if (!m) return "";
+      d = +m[1]; mo = +m[2]; y = m[3] ? +m[3] : new Date().getFullYear();
+      if (y < 100) y += 2000;
+    }
+    return realDate(d, mo, y) ? pad(d) + "/" + pad(mo) + "/" + y : "";
   }
   function normMitja(s) {
     const t = s.toLowerCase();
@@ -353,8 +364,8 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
       id: uid(),
       ref: clean(o.ref).slice(0, 40) || "alumne/a",
       nom: "",
-      setmana: normWeek(clean(o.setmana)) || weekRange(-1),
-      data: normDate(clean(o.data)) || dmy(new Date()),
+      setmana: normWeek(clean(o.setmana)), // left blank when not dictated: the register never gets invented dates
+      data: normDate(clean(o.data)),
       mitja: normMitja(clean(o.mitja)),
       resum: endDot(clean(o.resum)),
       acord: endDot(clean(o.acord)),
@@ -394,7 +405,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   }
   function geminiBody(model, prompt, plain) {
     const gemma = /^gemma/i.test(model); // Gemma: no system prompt, no JSON mode
-    const gc = { maxOutputTokens: 2048 };
+    const gc = { maxOutputTokens: 4096 };
     if (!gemma) gc.responseMimeType = "application/json";
     if (!plain && !gemma) {
       gc.responseSchema = SCHEMA;
@@ -434,6 +445,11 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
         }
         if (res.ok) {
           const cand = data.candidates && data.candidates[0];
+          const reason = cand && cand.finishReason;
+          if (reason && reason !== "STOP") { // cut short or blocked: never keep half a register
+            other = uerr("La resposta de Gemini ha quedat incompleta. Torna-ho a provar o divideix el dictat.");
+            break;
+          }
           const parts = (cand && cand.content && cand.content.parts) || [];
           const parsed = parseLoose(parts.filter((p) => !p.thought).map((p) => p.text || "").join(""));
           if (parsed) { bumpUsage(data.usageMetadata && data.usageMetadata.totalTokenCount); return parsed; }
@@ -595,7 +611,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   }
   function renderEngine() {
     const has = !!getKey();
-    $("#engineText").textContent = has ? "Gemini · gratuït" : "Falta la clau";
+    $("#engineText").textContent = has ? "Gemini" : "Falta la clau";
     $("#engineChip").classList.toggle("missing", !has);
     $("#setup").hidden = has;
   }
@@ -637,9 +653,11 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     const ref = document.createElement("span"); ref.className = "ref"; ref.textContent = r.ref || "alumne/a";
     const tag = document.createElement("span"); tag.className = "tag"; tag.hidden = !t;
     tag.textContent = t === "amber" ? "Sense resposta" : "Canvi de grup";
+    const cp = document.createElement("button"); cp.type = "button"; cp.className = "btn mini-copy"; cp.dataset.act = "copy";
+    cp.textContent = "Copia B–F"; cp.hidden = !!r.example;
     const x = document.createElement("button"); x.type = "button"; x.className = "icon-x"; x.dataset.act = "del";
     x.setAttribute("aria-label", "Esborra la fila"); x.textContent = "×";
-    head.append(ref, tag, x);
+    head.append(ref, tag, cp, x);
     const pair = document.createElement("div"); pair.className = "f2";
     pair.append(field("Setmana detecció", "setmana", r.setmana), field("Data 1r contacte", "data", r.data));
     card.append(head, field("Nom de l’alumne/a", "nom", r.nom), pair, chipsEl(r),
@@ -668,12 +686,32 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   }
   const findRow = (el) => { const c = el.closest(".row-card"); return c && rows.find((x) => x.id === c.dataset.id); };
 
-  cards.addEventListener("click", (e) => {
+  async function copyText(text) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
+    } catch (_) {}
+    const t = document.createElement("textarea");
+    t.value = text; t.setAttribute("readonly", "");
+    t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.append(t); t.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (_) {}
+    t.remove();
+    return ok;
+  }
+  cards.addEventListener("click", async (e) => {
     const del = e.target.closest("[data-act='del']");
+    const cp = e.target.closest("[data-act='copy']");
     const chip = e.target.closest(".chips button");
-    const r = (del || chip) && findRow(del || chip);
+    const btn = del || cp || chip;
+    const r = btn && findRow(btn);
     if (!r) return;
     if (del) { rows = rows.filter((x) => x !== r); saveRows(); render(); return; }
+    if (cp) {
+      const tsv = ["setmana", "data", "mitja", "resum", "acord"].map((k) => clean(r[k])).join("\t");
+      toast(await copyText(tsv) ? "Copiat. A l’Excel, clica la cel·la B de l’alumne i prem Ctrl+V." : "No s’ha pogut copiar en aquest navegador.");
+      return;
+    }
     r.mitja = chip.dataset.mitja;
     chip.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === chip)));
     saveRows(); prepare();
@@ -711,9 +749,13 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     if (busy) return;
     const text = ta.value.trim();
     if (!text) { setStatus("Primer prem «Grava» i explica què ha passat.", "err"); return; }
+    if (text.length > MAX_CHARS) {
+      setStatus("El dictat és massa llarg (" + text.length + " caràcters; màxim " + MAX_CHARS + "). Divideix-lo en dues parts.", "err");
+      return;
+    }
     busy = true; genBtn.disabled = true; micBtn.disabled = true; setStatus("Escrivint les files…");
     try {
-      const prompt = FORMAT + "\n" + calendarLine() + "\nDictat: «" + text.slice(0, 6000) + "»";
+      const prompt = FORMAT + "\n" + calendarLine() + "\nDictat: «" + text + "»";
       const list = toList(await runGemini(prompt));
       if (!list.length) throw uerr("No s’ha trobat cap fila al dictat. Torna-ho a provar.");
       const added = list.slice(0, 30).map(normRow);
@@ -869,12 +911,12 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   async function saveKey(k, statusId) {
     const st = $(statusId);
     if (!k) { st.className = "status err"; st.textContent = "Enganxa primer la clau."; return; }
-    store.set("key", k); renderEngine();
     st.className = "status"; st.textContent = "Comprovant la clau…";
-    const r = await checkKey(k);
-    st.className = "status " + (r.ok ? "ok" : "err");
-    st.textContent = r.ok ? "Clau correcta. Ja pots gravar." : r.msg;
-    if (r.ok && statusId === "#setupStatus") { $("#setup").hidden = true; toast("Clau desada. Ja pots gravar."); }
+    const r = await checkKey(k); // a key that fails the check never replaces the saved one
+    if (!r.ok) { st.className = "status err"; st.textContent = r.msg + (getKey() ? " Es manté la clau anterior." : ""); return; }
+    store.set("key", k); renderEngine();
+    st.className = "status ok"; st.textContent = "Clau correcta. Ja pots gravar.";
+    if (statusId === "#setupStatus") { $("#setup").hidden = true; toast("Clau desada. Ja pots gravar."); }
   }
   $("#setupSave").addEventListener("click", () => saveKey($("#setupKey").value.trim(), "#setupStatus"));
   function openSettings() {
@@ -908,23 +950,11 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     $("#modelsInput").value = DEFAULT_MODELS.join(", ");
     store.del("models"); store.del("exhausted");
   });
-  $("#shareCfg").addEventListener("click", async () => {
-    const k = getKey();
-    if (!k) { $("#keyStatus").className = "status err"; $("#keyStatus").textContent = "Primer desa una clau."; return; }
-    const link = location.origin + location.pathname + "#clau=" + encodeURIComponent(k);
-    try {
-      if (navigator.share) { await navigator.share({ title: "Registre tutorial", url: link }); return; }
-    } catch (e) { if (e && e.name === "AbortError") return; }
-    try { await navigator.clipboard.writeText(link); toast("Enllaç copiat. Envia-te’l per WhatsApp o correu i obre’l al mòbil."); }
-    catch (_) { $("#keyStatus").className = "status"; $("#keyStatus").textContent = link; }
-  });
-
   // ---------- start
-  const fromLink = /[#&]clau=([^&]+)/.exec(location.hash);
-  if (fromLink) {
-    try { store.set("key", decodeURIComponent(fromLink[1]).trim()); } catch (_) {}
+  // Keys never arrive through links: an old link that carries one is wiped from the address bar and ignored.
+  if (/[#&]clau=/.test(location.hash)) {
     history.replaceState(null, "", location.pathname + location.search);
-    toast("Clau desada en aquest dispositiu. Ja pots gravar.");
+    toast("Per seguretat, la clau no es pot passar per enllaç. Enganxa-la a mà.");
   }
   ta.value = store.get("draft", "") || "";
   renderLang(); renderEngine(); render();
