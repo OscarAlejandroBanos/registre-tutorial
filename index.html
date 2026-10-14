@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1D4A39">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Registre">
+<title>Registre tutorial per veu</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231D4A39'/%3E%3Crect x='26' y='12' width='12' height='24' rx='6' fill='white'/%3E%3Cpath d='M18 30a14 14 0 0 0 28 0' fill='none' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M32 44v8' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: phone-first single column (max 560px): record button and transcript, one card per row, fixed bottom bar that exports the Excel. */
+:root {
+  --paper: #F3F5F1;
+  --sheet: #FFFFFF;
+  --ink: #17221D;
+  --muted: #56655D;
+  --rule: #D3DBD5;
+  --board: #1D4A39;
+  --board-ink: #FFFFFF;
+  --board-soft: #DCEBE2;
+  --rec: #C0392B;
+  --rec-ink: #FFFFFF;
+  --amber-bg: #FBEBC8;
+  --amber-ink: #7A5200;
+  --blue-bg: #DEE9F6;
+  --blue-ink: #1C5591;
+  --err: #A1321F;
+  --shadow: rgb(10 20 15 / .16);
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0F1613; --sheet: #151E1A; --ink: #E3EBE6; --muted: #98A89F; --rule: #2C3833;
+    --board: #6FC39C; --board-ink: #0C1411; --board-soft: #1E3229; --rec: #F0705C; --rec-ink: #1A0D0A;
+    --amber-bg: #3B2E12; --amber-ink: #F2C66C; --blue-bg: #15283C; --blue-ink: #95C0EC; --err: #F4A58C;
+    --shadow: rgb(0 0 0 / .45);
+    color-scheme: dark;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--board); outline-offset: 2px; }
+button { -webkit-tap-highlight-color: transparent; }
+a { color: var(--board); }
+
+.wrap { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-top: calc(18px + env(safe-area-inset-top, 0px)); padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; }
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px; }
+.eyebrow { margin: 0; font: 500 11.5px/1.3 var(--mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 4px 0 0; font: 800 29px/1.05 var(--display); letter-spacing: -.015em; text-wrap: balance; }
+h2 { margin: 0; font: 700 18px/1.2 var(--display); }
+h3 { margin: 16px 0 6px; font: 700 15px/1.3 var(--display); }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border: 1px solid var(--rule); border-radius: 999px; background: var(--sheet); color: var(--ink); font: 500 13px var(--body); cursor: pointer; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--board); }
+.chip.missing .dot { background: var(--rec); }
+
+.card { display: grid; gap: 12px; min-width: 0; padding: 16px; border: 1px solid var(--rule); border-radius: 16px; background: var(--sheet); }
+.setup { border-color: var(--board); background: var(--board-soft); }
+.setup p { margin: 0; font-size: 14.5px; }
+.row { display: flex; gap: 8px; }
+.row input, .keyrow input, #modelsInput { flex: 1; min-width: 0; width: 100%; padding: 11px 12px; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); color: var(--ink); font: 16px var(--mono); }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 9px; overflow: hidden; }
+.seg button { padding: 7px 12px; border: 0; background: transparent; color: var(--muted); font: 700 14px var(--body); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--board); color: var(--board-ink); }
+
+.mic { display: flex; width: 100%; align-items: center; justify-content: center; gap: 10px; padding: 18px 16px; border: 2px solid var(--rec); border-radius: 16px; background: var(--sheet); color: var(--rec); font: 800 21px/1 var(--display); cursor: pointer; }
+.mic svg { width: 26px; height: 26px; }
+.mic.on { background: var(--rec); color: var(--rec-ink); animation: pulse 1.6s ease-out infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--rec) 45%, transparent); } 100% { box-shadow: 0 0 0 16px transparent; } }
+#dictat { display: block; width: 100%; min-height: 110px; resize: vertical; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper); color: var(--ink); font: 17px/1.5 var(--body); }
+#dictat::placeholder { color: var(--muted); opacity: .9; }
+.interim { min-height: 1.2em; margin: -6px 2px 0; font-size: 14.5px; font-style: italic; color: var(--muted); }
+.hint { margin: 0; font-size: 14px; color: var(--muted); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); color: var(--ink); font: 700 15px/1.15 var(--body); cursor: pointer; }
+.btn.primary { background: var(--board); border-color: var(--board); color: var(--board-ink); }
+.btn.big { width: 100%; padding: 15px 16px; border-radius: 12px; font-size: 17px; }
+.btn.ghost { background: transparent; }
+.btn:disabled { opacity: .55; cursor: progress; }
+.linkbtn { padding: 0; border: 0; background: none; color: var(--board); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.status { min-height: 1.4em; margin: 0; font-size: 14.5px; color: var(--muted); }
+.status.ok { color: var(--board); }
+.status.err { color: var(--err); }
+
+.list { display: grid; gap: 12px; }
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-inline: 2px; }
+.count { display: inline-grid; place-items: center; min-width: 26px; height: 26px; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--board); color: var(--board-ink); font: 500 13px var(--mono); vertical-align: 2px; }
+.note { margin: 0; padding-inline: 2px; font-size: 14px; color: var(--muted); }
+#cards { display: grid; gap: 12px; }
+.row-card { display: grid; gap: 12px; padding: 12px 14px 14px; border: 1px solid var(--rule); border-radius: 16px; background: var(--sheet); }
+.row-card.amber { background: var(--amber-bg); }
+.row-card.blue { background: var(--blue-bg); }
+.row-card.example { border-style: dashed; }
+.row-card.fresh { animation: fresh 1.8s ease-out; }
+@keyframes fresh { from { box-shadow: 0 0 0 3px var(--board); } }
+.rc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ref { padding: 2px 8px; border: 1px dashed var(--muted); border-radius: 7px; font-size: 13.5px; font-style: italic; color: var(--muted); }
+.tag { padding: 2px 9px; border-radius: 999px; font: 700 12.5px var(--body); }
+.amber .tag { background: color-mix(in srgb, var(--amber-ink) 14%, transparent); color: var(--amber-ink); }
+.blue .tag { background: color-mix(in srgb, var(--blue-ink) 14%, transparent); color: var(--blue-ink); }
+.icon-x { margin-left: auto; width: 38px; height: 38px; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); color: var(--muted); font: 400 22px/1 var(--body); cursor: pointer; }
+.f { display: grid; gap: 4px; min-width: 0; }
+.f > span { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.f input, .f textarea { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--rule); border-radius: 9px; background: var(--sheet); color: var(--ink); font: 16px/1.4 var(--body); }
+.f input[data-k="setmana"], .f input[data-k="data"] { font-family: var(--mono); }
+.f textarea { resize: none; overflow: hidden; }
+.f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { padding: 7px 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--sheet); color: var(--ink); font: 700 14px var(--body); cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--board); border-color: var(--board); color: var(--board-ink); }
+
+.help { padding: 2px 4px; }
+.help summary { font-weight: 700; color: var(--muted); cursor: pointer; }
+.help-body { font-size: 14.5px; color: var(--muted); }
+.help-body ol { padding-left: 20px; }
+.help-body li { margin: 5px 0; }
+
+.bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--rule); background: color-mix(in srgb, var(--paper) 94%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.bar-in { display: grid; gap: 6px; max-width: 560px; margin: 0 auto; }
+.bar-note { margin: 0; font-size: 13px; text-align: center; color: var(--muted); }
+.bar-note.ok { color: var(--board); }
+.bar-note.err { color: var(--err); }
+body.typing .bar { display: none; }
+
+dialog { width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid var(--rule); border-radius: 16px; background: var(--sheet); color: var(--ink); box-shadow: 0 18px 48px var(--shadow); }
+dialog::backdrop { background: rgb(10 20 15 / .45); }
+.dlg { padding: 18px 18px 20px; }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dlg p { margin: 6px 0; font-size: 14.5px; }
+.keyrow { display: flex; gap: 8px; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.small { font-size: 13px; color: var(--muted); }
+
+.toast { position: fixed; left: 50%; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); z-index: 10; max-width: calc(100vw - 32px); transform: translateX(-50%); padding: 10px 16px; border-radius: 10px; background: var(--ink); color: var(--paper); font-size: 14.5px; box-shadow: 0 6px 24px var(--shadow); }
+
+@media (prefers-reduced-motion: reduce) { .mic.on, .row-card.fresh { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Curs 2026-27 · Seguiment tutorial</p>
+      <h1>Registre tutorial per veu</h1>
+    </div>
+    <button class="chip" id="engineChip" type="button"><span class="dot"></span><span id="engineText">Gemini</span></button>
+  </header>
+
+  <section class="card setup" id="setup" hidden>
+    <h2>Primer cop: la clau gratuïta de Gemini</h2>
+    <p>Crea-la a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> amb el compte de Google del centre i enganxa-la aquí. Es desa només en aquest dispositiu.</p>
+    <div class="row">
+      <input id="setupKey" type="password" autocomplete="off" spellcheck="false" placeholder="Enganxa la clau (AIza…)" aria-label="Clau de Gemini">
+      <button class="btn primary" id="setupSave" type="button">Desa</button>
+    </div>
+    <p class="status" id="setupStatus" role="status"></p>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Què ha passat?</h2>
+      <div class="seg" role="group" aria-label="Idioma del dictat">
+        <button type="button" data-lang="ca" aria-pressed="false">Català</button>
+        <button type="button" data-lang="es" aria-pressed="true">Castellà</button>
+      </div>
+    </div>
+    <button class="mic" id="micBtn" type="button" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+      <span id="micLabel">Grava</span>
+    </button>
+    <label class="hint" for="dictat" id="micHint">Prem «Grava», explica què ha passat i prem «Atura»: les files es fan soles.</label>
+    <textarea id="dictat" placeholder="Aquí apareix el que dius. També hi pots escriure."></textarea>
+    <p class="interim" id="interim" aria-live="polite"></p>
+    <button class="btn" id="genBtn" type="button">Genera les files</button>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <p class="hint">Sense noms: digues «alumne 1», «el segon»… El nom l’escrius a la fila.</p>
+  </section>
+
+  <section class="list" aria-labelledby="listTitle">
+    <div class="list-head">
+      <h2 id="listTitle">Files<span class="count" id="count">0</span></h2>
+      <button class="btn ghost" id="clearAll" type="button">Buida</button>
+    </div>
+    <p class="note" id="exampleNote" hidden>Fila d’exemple: desapareix quan generis la primera.</p>
+    <p class="note" id="empty" hidden>Encara no hi ha files. Prem «Grava» i explica què ha passat.</p>
+    <div id="cards"></div>
+  </section>
+
+  <details class="help">
+    <summary>Com passar-ho al registre</summary>
+    <div class="help-body">
+      <ol>
+        <li>Prem «Grava», explica què ha passat (pots parlar de diversos alumnes) i prem «Atura».</li>
+        <li>Si vols, escriu el nom de cada alumne a la seva fila. El nom no s’envia a Gemini: només va a l’Excel.</li>
+        <li>Prem «Exporta a Excel». A l’iPhone s’obre el menú de compartir (correu, WhatsApp o Fitxers); a l’Android i a l’ordinador va a Baixades.</li>
+        <li>Obre l’Excel, copia les files i enganxa-les al registre a partir de la columna A.</li>
+      </ol>
+      <p>La veu la transcriu el navegador i el text s’envia a Gemini (capa gratuïta de Google) per omplir les columnes. Les files i la clau es queden en aquest dispositiu. No diguis DNI ni diagnòstics.</p>
+    </div>
+  </details>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <button class="btn primary big" id="dlBtn" type="button">Exporta a Excel</button>
+    <p class="bar-note" id="barNote">El nom només va a l’Excel: no s’envia a Gemini.</p>
+  </div>
+</div>
+
+<dialog id="settings" aria-labelledby="setTitle">
+  <div class="dlg">
+    <div class="dlg-head"><h2 id="setTitle">Configuració</h2><button class="btn ghost" id="setClose" type="button">Tanca</button></div>
+    <h3>Clau de Gemini</h3>
+    <div class="keyrow">
+      <input id="keyInput" type="password" autocomplete="off" spellcheck="false" aria-label="Clau de Gemini">
+      <button class="btn" id="keyToggle" type="button">Mostra</button>
+    </div>
+    <div class="btnrow">
+      <button class="btn primary" id="keySave" type="button">Desa i comprova</button>
+      <button class="btn ghost" id="keyDelete" type="button">Esborra-la</button>
+    </div>
+    <p class="status" id="keyStatus" role="status"></p>
+    <h3>Fes-la servir en un altre dispositiu</h3>
+    <p>Crea un enllaç que ja porta la clau: obre’l al mòbil i queda configurat. Comparteix-lo només amb qui vulguis que faci servir la teva clau.</p>
+    <div class="btnrow"><button class="btn" id="shareCfg" type="button">Envia l’enllaç amb la clau</button></div>
+    <h3>Models</h3>
+    <p class="small">En ordre de preferència. Si un esgota la quota gratuïta del dia, es fa servir el següent (es renova cap a les 9:00).</p>
+    <input id="modelsInput" autocomplete="off" spellcheck="false" aria-label="Models de Gemini">
+    <div class="btnrow"><button class="btn ghost" id="modelsReset" type="button">Restaura els models</button></div>
+    <p class="small" id="usageText"></p>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(() => {
+  "use strict";
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  // Everything (key, rows, names) stays in this browser. Every access is guarded.
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("rtw." + k); return v === null ? d : JSON.parse(v); } catch (_) { return d; } },
+    set(k, v) { try { localStorage.setItem("rtw." + k, JSON.stringify(v)); } catch (_) {} },
+    del(k) { try { localStorage.removeItem("rtw." + k); } catch (_) {} },
+  };
+
+  const API = "https://generativelanguage.googleapis.com/v1beta";
+  const DEFAULT_MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-3.8-flash"];
+  const MITJANS = ["Trucada", "Correu", "Missatge", "Presencial", "Videotrucada", "—"];
+  const HEAD = ["Alumne/a", "Setmana detecció", "Data 1r contacte", "Mitjà utilitzat", "Resum resposta/motiu", "Acord/data prevista d’incorporació"];
+  const WIDTHS = [30, 15, 13, 14, 52, 48]; // same as the register workbook
+  const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+  // Short on purpose: it goes with every request.
+  const SYS = [
+    "Omples el «Registre de seguiment de les accions tutorials» d'un centre de formació d'adults a partir del dictat d'un tutor (en català o castellà; pot tenir errors de transcripció). Escriu sempre en català, en estil de registre: frases curtes i telegràfiques acabades en punt.",
+    "Fes una fila per alumne i acció, en l'ordre del dictat.",
+    "ref: com s'anomena l'alumne al dictat («alumne 1», «el segon», inicials); mai un nom complet.",
+    "setmana: setmana o període en què es va detectar l'absència, «dd/mm-dd/mm»; buit si no es diu.",
+    "data: data del primer contacte o intent, «dd/mm/aaaa»; buit si no es diu.",
+    "mitja: Trucada, Correu, Missatge (WhatsApp, SMS, Classroom…), Presencial, Videotrucada, o «—» si el tutor no ha contactat (p. ex. l'alumne ja havia avisat).",
+    "resum: resposta de l'alumne o motiu de l'absència. Si no contesta: «Sense resposta.» i els intents següents amb data («2n intent trucada 16/10. Sense resposta.»).",
+    "acord: acord i/o data prevista d'incorporació («S'incorporarà el 02/11.», «Canvi provisional al grup de matí.», «Derivat a coordinació.»); buit si no n'hi ha.",
+    "No inventis res. Cap nom de persona. Salut: només «Baixa mèdica» o «Motius de salut», sense diagnòstics.",
+  ].join("\n");
+  const FORMAT = 'Respon només amb JSON: {"files":[{"ref":"","setmana":"","data":"","mitja":"","resum":"","acord":""}]}';
+  const STR = { type: "STRING" };
+  const SCHEMA = {
+    type: "OBJECT",
+    properties: {
+      files: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: { ref: STR, setmana: STR, data: STR, mitja: { type: "STRING", enum: MITJANS }, resum: STR, acord: STR },
+          required: ["ref", "setmana", "data", "mitja", "resum", "acord"],
+          propertyOrdering: ["ref", "setmana", "data", "mitja", "resum", "acord"],
+        },
+      },
+    },
+    required: ["files"],
+  };
+
+  // ---------- dates
+  const pad = (n) => String(n).padStart(2, "0");
+  const dm = (d) => pad(d.getDate()) + "/" + pad(d.getMonth() + 1);
+  const dmy = (d) => dm(d) + "/" + d.getFullYear();
+  const isoDate = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const DAYS = ["diumenge", "dilluns", "dimarts", "dimecres", "dijous", "divendres", "dissabte"];
+  function weekRange(offset) {
+    const t = new Date();
+    const mon = addDays(t, -((t.getDay() + 6) % 7) + offset * 7);
+    return dm(mon) + "-" + dm(addDays(mon, 4));
+  }
+  function calendarLine() {
+    const t = new Date();
+    return "Avui: " + DAYS[t.getDay()] + " " + dmy(t) + ". Setmanes (dl-dv): fa dues setmanes " + weekRange(-2) +
+      "; passada " + weekRange(-1) + "; actual " + weekRange(0) + "; vinent " + weekRange(1) + ".";
+  }
+  const fromIso = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ""); return m ? m[3] + "/" + m[2] + "/" + m[1] : ""; };
+  const toIso = (v) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v || ""); return m ? m[3] + "-" + m[2] + "-" + m[1] : ""; };
+  // Gemini's free quota resets at midnight Pacific time.
+  function quotaDay() {
+    try { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date()); }
+    catch (_) { return isoDate(new Date()); }
+  }
+
+  // ---------- cleaning model output into Excel-safe cells
+  function clean(s) {
+    return String(s == null ? "" : s).replace(/[\t\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim().replace(/^[=+\-@]+\s*/, "");
+  }
+  function normWeek(s) {
+    const m = /^(\d{1,2})\/(\d{1,2})\s*[-–—]\s*(\d{1,2})\/(\d{1,2})$/.exec(s);
+    return m ? pad(m[1]) + "/" + pad(m[2]) + "-" + pad(m[3]) + "/" + pad(m[4]) : s;
+  }
+  function normDate(s) {
+    let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+    if (m) return pad(m[3]) + "/" + pad(m[2]) + "/" + m[1];
+    m = /^(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?$/.exec(s);
+    if (!m) return "";
+    let y = m[3] ? Number(m[3]) : new Date().getFullYear();
+    if (y < 100) y += 2000;
+    return pad(m[1]) + "/" + pad(m[2]) + "/" + y;
+  }
+  function normMitja(s) {
+    const t = s.toLowerCase();
+    if (!t || /^[-–—]+$/.test(t) || /^(cap|cap contacte|ningun|ninguno|ningú)\.?$/.test(t)) return "—";
+    if (/v[ií]deo|meet|zoom|teams/.test(t)) return "Videotrucada";
+    if (/truc|llam|tel[eèé]f/.test(t)) return "Trucada";
+    if (/correu|correo|e-?mail|mail/.test(t)) return "Correu";
+    if (/missatg|mensaj|whats|sms|classroom|telegram|xat|chat/.test(t)) return "Missatge";
+    if (/presencial|en persona|cara a cara|entrevista/.test(t)) return "Presencial";
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  const endDot = (s) => (s && !/[.!?…)»"]$/.test(s) ? s + "." : s);
+  const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+  function normRow(r) {
+    const o = r && typeof r === "object" ? r : {};
+    return {
+      id: uid(),
+      ref: clean(o.ref).slice(0, 40) || "alumne/a",
+      nom: "",
+      setmana: normWeek(clean(o.setmana)) || weekRange(-1),
+      data: normDate(clean(o.data)) || dmy(new Date()),
+      mitja: normMitja(clean(o.mitja)),
+      resum: endDot(clean(o.resum)),
+      acord: endDot(clean(o.acord)),
+    };
+  }
+  function tint(r) {
+    if (/sense resposta/i.test(r.resum || "")) return "amber";
+    if (/canvi/i.test(r.acord || "") && /grup/i.test(r.acord || "")) return "blue";
+    return "";
+  }
+  function toList(v) {
+    if (Array.isArray(v)) return v;
+    if (v && Array.isArray(v.files)) return v.files;
+    if (v && typeof v === "object" && ("resum" in v || "acord" in v)) return [v];
+    return [];
+  }
+  function parseLoose(text) {
+    const t = String(text || "").trim();
+    const fence = /```(?:json)?\s*([\s\S]*?)```/.exec(t);
+    for (const s of [t, fence && fence[1], t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1)]) {
+      if (!s) continue;
+      try { return JSON.parse(s); } catch (_) {}
+    }
+    return null;
+  }
+  function uerr(msg) { const e = new Error(msg); e.userMsg = msg; return e; }
+  const short = (s) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > 160 ? s.slice(0, 157) + "…" : s; };
+
+  // ---------- Gemini (free tier)
+  const getKey = () => String(store.get("key", "") || "").trim();
+  function getModels() { const v = store.get("models", null); return Array.isArray(v) && v.length ? v : DEFAULT_MODELS; }
+  function thinkingFor(model) {
+    if (/lite/i.test(model)) return null; // Flash-Lite already thinks minimally
+    if (/^gemini-2\.5-flash/i.test(model)) return { thinkingBudget: 0 };
+    if (/^gemini-[3-9]/i.test(model)) return { thinkingLevel: "low" };
+    return null;
+  }
+  function geminiBody(model, prompt, plain) {
+    const gemma = /^gemma/i.test(model); // Gemma: no system prompt, no JSON mode
+    const gc = { maxOutputTokens: 2048 };
+    if (!gemma) gc.responseMimeType = "application/json";
+    if (!plain && !gemma) {
+      gc.responseSchema = SCHEMA;
+      const t = thinkingFor(model);
+      if (t) gc.thinkingConfig = t;
+    }
+    const body = { contents: [{ role: "user", parts: [{ text: (gemma ? SYS + "\n\n" : "") + prompt }] }], generationConfig: gc };
+    if (!gemma) body.systemInstruction = { parts: [{ text: SYS }] };
+    return body;
+  }
+  async function fetchT(url, opts, ms) {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), ms);
+    try { return await fetch(url, Object.assign({}, opts, { signal: c.signal })); }
+    finally { clearTimeout(t); }
+  }
+  async function runGemini(prompt) {
+    const key = getKey();
+    if (!key) { $("#setup").hidden = false; throw uerr("Primer enganxa la clau de Gemini (a dalt)."); }
+    const day = quotaDay();
+    const exhausted = store.get("exhausted", {}) || {};
+    const models = getModels().filter((m) => exhausted[m] !== day);
+    if (!models.length) throw uerr("La quota gratuïta d’avui s’ha esgotat. Es renova cap a les 9:00.");
+    let other = null, perMinute = false, perDay = false;
+    for (const model of models) {
+      for (const plain of [false, true]) {
+        let res, data;
+        try {
+          res = await fetchT(API + "/models/" + encodeURIComponent(model) + ":generateContent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+            body: JSON.stringify(geminiBody(model, prompt, plain)),
+          }, 60000);
+          data = await res.json().catch(() => ({}));
+        } catch (e) {
+          throw uerr(e && e.name === "AbortError" ? "Gemini triga massa a respondre. Torna-ho a provar." : "No hi ha connexió amb Gemini. Comprova internet i torna-ho a provar.");
+        }
+        if (res.ok) {
+          const cand = data.candidates && data.candidates[0];
+          const parts = (cand && cand.content && cand.content.parts) || [];
+          const parsed = parseLoose(parts.filter((p) => !p.thought).map((p) => p.text || "").join(""));
+          if (parsed) { bumpUsage(data.usageMetadata && data.usageMetadata.totalTokenCount); return parsed; }
+          if (!plain) continue;
+          other = uerr("Gemini no ha tornat una resposta vàlida. Torna-ho a provar.");
+          break;
+        }
+        const err = data.error || {};
+        const msg = err.message || res.statusText || "";
+        const detail = JSON.stringify(err.details || "");
+        if (/API key not valid|API_KEY_INVALID/i.test(msg + detail)) throw uerr("La clau de Gemini no és vàlida. Canvia-la a Configuració (botó de dalt).");
+        if (res.status === 403) throw uerr("Google no deixa fer servir aquesta clau (" + short(msg) + ").");
+        if (res.status === 429) {
+          if (/PerDay/i.test(detail + msg)) { perDay = true; exhausted[model] = day; store.set("exhausted", exhausted); }
+          else perMinute = true;
+          break;
+        }
+        if (res.status === 400 && !plain) continue; // retry once without schema and thinking settings
+        other = uerr("Gemini ha respost " + res.status + ": " + short(msg));
+        break; // retired model or overloaded → next model
+      }
+    }
+    if (perMinute) throw uerr("Massa peticions seguides. Espera un minut i torna-ho a provar.");
+    if (perDay && !other) throw uerr("La quota gratuïta d’avui s’ha esgotat. Es renova cap a les 9:00.");
+    throw other || uerr("No s’han pogut generar les files.");
+  }
+  async function checkKey(key) {
+    try {
+      const r = await fetchT(API + "/models?pageSize=1", { headers: { "x-goog-api-key": key } }, 15000);
+      if (r.ok) return { ok: true };
+      const j = await r.json().catch(() => ({}));
+      const m = (j.error && j.error.message) || r.statusText;
+      if (/API key not valid|API_KEY_INVALID/i.test(m + JSON.stringify((j.error && j.error.details) || ""))) return { ok: false, msg: "Aquesta clau no és vàlida. Torna-la a copiar." };
+      return { ok: false, msg: "Google ha respost " + r.status + ": " + short(m) };
+    } catch (_) {
+      return { ok: false, msg: "No hi ha connexió amb Google." };
+    }
+  }
+  function bumpUsage(tokens) {
+    let u = store.get("usage", {}) || {};
+    if (u.day !== quotaDay()) u = { day: quotaDay(), req: 0, tok: 0 };
+    u.req += 1; u.tok += Number(tokens) || 0;
+    store.set("usage", u);
+  }
+
+  // ---------- Excel (.xlsx) built in the page: the register's columns, widths and fonts
+  const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const NS = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
+  const REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+  const esc = (s) => String(s == null ? "" : s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // Style ids in cellXfs: 1 header, 2 text, 3 placeholder (name still to write), 4 date, 5 text-formatted (keeps "05/10-09/10" as text).
+  function stylesXml() {
+    const g = "FFB9C6BE";
+    const side = (n) => `<${n} style="thin"><color rgb="${g}"/></${n}>`;
+    const font = (extra, color) => `<font>${extra}<sz val="10"/><color rgb="${color}"/><name val="Arial"/><family val="2"/></font>`;
+    const cell = (numFmt, fontId, align) => `<xf numFmtId="${numFmt}" fontId="${fontId}" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment ${align}/></xf>`;
+    return XML + `<styleSheet ${NS}>` +
+      `<numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yy"/></numFmts>` +
+      `<fonts count="3">${font("", "FF17221D")}${font("<b/>", "FF1D4A39")}${font("<i/>", "FF56655D")}</fonts>` +
+      `<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>` +
+      `<fill><patternFill patternType="solid"><fgColor rgb="FFE1ECE5"/><bgColor indexed="64"/></patternFill></fill></fills>` +
+      `<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border>` +
+      `<border>${side("left")}${side("right")}${side("top")}${side("bottom")}<diagonal/></border>` +
+      `<border>${side("left")}${side("right")}${side("top")}<bottom style="medium"><color rgb="FF1D4A39"/></bottom><diagonal/></border></borders>` +
+      `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
+      `<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
+      `<xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>` +
+      cell(0, 0, 'vertical="top" wrapText="1"') + cell(0, 2, 'vertical="top" wrapText="1"') +
+      cell(164, 0, 'horizontal="left" vertical="top"') + cell(49, 0, 'vertical="top"') +
+      `</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  }
+  function excelSerial(s) {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s || "");
+    if (!m) return null;
+    const t = Date.UTC(+m[3], +m[2] - 1, +m[1]);
+    const back = new Date(t);
+    if (back.getUTCDate() !== +m[1] || back.getUTCMonth() !== +m[2] - 1) return null;
+    return Math.round((t - Date.UTC(1899, 11, 30)) / 86400000);
+  }
+  // Excel does not grow wrapped rows on open, so estimate each row's height (Arial 10 ≈ 12.75 pt a line).
+  const lines = (text, width) => Math.max(1, Math.ceil(String(text || "").length / Math.floor(width * 1.05)));
+  function sheetXml(list) {
+    const str = (ref, s, v) => (v === "" || v == null)
+      ? `<c r="${ref}" s="${s}"/>`
+      : `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
+    let data = `<row r="1" ht="32" customHeight="1">` + HEAD.map((h, i) => str("ABCDEF"[i] + "1", 1, h)).join("") + `</row>`;
+    list.forEach((r, i) => {
+      const n = i + 2;
+      const name = clean(r.nom);
+      const a = name || r.ref || "";
+      const serial = excelSerial(r.data);
+      const h = Math.max(lines(a, WIDTHS[0]), lines(r.resum, WIDTHS[4]), lines(r.acord, WIDTHS[5])) * 12.75 + 3;
+      data += `<row r="${n}" ht="${h.toFixed(2)}" customHeight="1">` +
+        str("A" + n, name ? 2 : 3, a) +
+        str("B" + n, 5, clean(r.setmana)) +
+        (serial !== null ? `<c r="C${n}" s="4"><v>${serial}</v></c>` : str("C" + n, 2, clean(r.data))) +
+        str("D" + n, 2, clean(r.mitja)) +
+        str("E" + n, 2, clean(r.resum)) +
+        str("F" + n, 2, clean(r.acord)) + `</row>`;
+    });
+    return XML + `<worksheet ${NS}><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:F${list.length + 1}"/>` +
+      `<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>` +
+      `<sheetFormatPr defaultRowHeight="12.75"/><cols>` +
+      WIDTHS.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("") +
+      `</cols><sheetData>${data}</sheetData>` +
+      `<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>` +
+      `<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+  }
+  async function buildXlsx(list) {
+    const zip = new window.JSZip();
+    zip.file("[Content_Types].xml", XML + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
+    zip.file("_rels/.rels", XML + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      `<Relationship Id="rId1" Type="${REL}/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+    zip.file("xl/workbook.xml", XML + `<workbook ${NS} xmlns:r="${REL}"><bookViews><workbookView xWindow="0" yWindow="0" windowWidth="16000" windowHeight="9000"/></bookViews>` +
+      '<sheets><sheet name="Registre" sheetId="1" r:id="rId1"/></sheets>' +
+      '<definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">Registre!$1:$1</definedName></definedNames></workbook>');
+    zip.file("xl/_rels/workbook.xml.rels", XML + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      `<Relationship Id="rId1" Type="${REL}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${REL}/styles" Target="styles.xml"/></Relationships>`);
+    zip.file("xl/styles.xml", stylesXml());
+    zip.file("xl/worksheets/sheet1.xml", sheetXml(list));
+    return zip.generateAsync({ type: "blob", compression: "DEFLATE", mimeType: XLSX_MIME });
+  }
+
+  // ---------- state
+  const ta = $("#dictat"), interimEl = $("#interim"), cards = $("#cards"), statusEl = $("#status");
+  const genBtn = $("#genBtn"), dlBtn = $("#dlBtn"), micBtn = $("#micBtn"), dlg = $("#settings");
+  let rows = store.get("rows", []);
+  if (!Array.isArray(rows)) rows = [];
+  if (!rows.length && !store.get("started", false)) {
+    rows = [{ id: uid(), ref: "exemple", nom: "", example: true, setmana: weekRange(-1), data: dmy(new Date()), mitja: "Trucada",
+      resum: "Sense resposta. 2n intent trucada " + dm(new Date()) + ". Sense resposta.", acord: "Derivat a coordinació / direcció." }];
+  }
+  let lastDictation = "", busy = false, saveTimer = 0;
+  const saveRows = () => store.set("rows", rows.filter((r) => !r.example));
+  const saveSoon = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => { saveRows(); prepare(); }, 400); };
+  const saveDraft = () => store.set("draft", ta.value);
+  const autosize = (el) => { el.style.height = "auto"; el.style.height = el.scrollHeight + 2 + "px"; };
+
+  function setStatus(msg, kind, extra) {
+    statusEl.className = "status" + (kind ? " " + kind : "");
+    statusEl.textContent = msg;
+    for (const [label, fn] of extra || []) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "linkbtn"; b.textContent = label;
+      b.addEventListener("click", fn);
+      statusEl.append(" · ", b);
+    }
+  }
+  function setBarNote(msg, kind) { const n = $("#barNote"); n.className = "bar-note" + (kind ? " " + kind : ""); n.textContent = msg; }
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+  }
+  function renderEngine() {
+    const has = !!getKey();
+    $("#engineText").textContent = has ? "Gemini · gratuït" : "Falta la clau";
+    $("#engineChip").classList.toggle("missing", !has);
+    $("#setup").hidden = has;
+  }
+
+  // ---------- cards
+  function field(label, k, value, tag) {
+    const wrap = document.createElement("label"); wrap.className = "f";
+    const span = document.createElement("span"); span.textContent = label;
+    const el = document.createElement(tag || "input");
+    el.dataset.k = k;
+    if (tag === "textarea") el.rows = 1;
+    if (k === "data") { el.type = "date"; el.value = toIso(value); }
+    else el.value = value || "";
+    if (k === "nom") { el.placeholder = "Opcional: només va a l’Excel"; el.autocomplete = "off"; el.setAttribute("autocapitalize", "words"); }
+    if (k === "setmana") { el.spellcheck = false; el.autocomplete = "off"; }
+    wrap.append(span, el);
+    return wrap;
+  }
+  function chipsEl(r) {
+    const wrap = document.createElement("div"); wrap.className = "f";
+    const span = document.createElement("span"); span.textContent = "Mitjà utilitzat";
+    const box = document.createElement("div"); box.className = "chips"; box.setAttribute("role", "group"); box.setAttribute("aria-label", "Mitjà utilitzat");
+    const opts = MITJANS.includes(r.mitja) || !r.mitja ? MITJANS : MITJANS.concat(r.mitja);
+    for (const m of opts) {
+      const b = document.createElement("button");
+      b.type = "button"; b.dataset.mitja = m; b.textContent = m === "—" ? "— cap" : m;
+      b.setAttribute("aria-pressed", String(m === r.mitja));
+      box.append(b);
+    }
+    wrap.append(span, box);
+    return wrap;
+  }
+  function cardEl(r, isFresh) {
+    const t = tint(r);
+    const card = document.createElement("article");
+    card.className = ["row-card", t, r.example ? "example" : "", isFresh ? "fresh" : ""].filter(Boolean).join(" ");
+    card.dataset.id = r.id;
+    const head = document.createElement("div"); head.className = "rc-head";
+    const ref = document.createElement("span"); ref.className = "ref"; ref.textContent = r.ref || "alumne/a";
+    const tag = document.createElement("span"); tag.className = "tag"; tag.hidden = !t;
+    tag.textContent = t === "amber" ? "Sense resposta" : "Canvi de grup";
+    const x = document.createElement("button"); x.type = "button"; x.className = "icon-x"; x.dataset.act = "del";
+    x.setAttribute("aria-label", "Esborra la fila"); x.textContent = "×";
+    head.append(ref, tag, x);
+    const pair = document.createElement("div"); pair.className = "f2";
+    pair.append(field("Setmana detecció", "setmana", r.setmana), field("Data 1r contacte", "data", r.data));
+    card.append(head, field("Nom de l’alumne/a", "nom", r.nom), pair, chipsEl(r),
+      field("Resum resposta/motiu", "resum", r.resum, "textarea"),
+      field("Acord/data prevista d’incorporació", "acord", r.acord, "textarea"));
+    return card;
+  }
+  function paintCard(card, r) {
+    const t = tint(r);
+    card.classList.remove("amber", "blue");
+    if (t) card.classList.add(t);
+    const tag = card.querySelector(".tag");
+    tag.hidden = !t; tag.textContent = t === "amber" ? "Sense resposta" : "Canvi de grup";
+  }
+  function render(freshIds) {
+    const fresh = new Set(freshIds || []);
+    cards.textContent = "";
+    rows.forEach((r) => cards.append(cardEl(r, fresh.has(r.id))));
+    cards.querySelectorAll("textarea").forEach(autosize);
+    const mine = rows.filter((r) => !r.example).length;
+    $("#count").textContent = String(mine);
+    $("#exampleNote").hidden = !rows.some((r) => r.example);
+    $("#empty").hidden = rows.length > 0;
+    dlBtn.textContent = mine ? "Exporta a Excel (" + mine + (mine === 1 ? " fila)" : " files)") : "Exporta a Excel";
+    prepare();
+  }
+  const findRow = (el) => { const c = el.closest(".row-card"); return c && rows.find((x) => x.id === c.dataset.id); };
+
+  cards.addEventListener("click", (e) => {
+    const del = e.target.closest("[data-act='del']");
+    const chip = e.target.closest(".chips button");
+    const r = (del || chip) && findRow(del || chip);
+    if (!r) return;
+    if (del) { rows = rows.filter((x) => x !== r); saveRows(); render(); return; }
+    r.mitja = chip.dataset.mitja;
+    chip.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === chip)));
+    saveRows(); prepare();
+  });
+  cards.addEventListener("input", (e) => {
+    const el = e.target, k = el.dataset && el.dataset.k, r = k && findRow(el);
+    if (!r) return;
+    r[k] = k === "data" ? fromIso(el.value) : el.value;
+    if (el.tagName === "TEXTAREA") autosize(el);
+    paintCard(el.closest(".row-card"), r);
+    saveSoon();
+  });
+  cards.addEventListener("focusout", (e) => {
+    const el = e.target, k = el.dataset && el.dataset.k, r = k && findRow(el);
+    if (!r || k === "data") return;
+    let v = k === "nom" ? el.value.trim() : clean(el.value);
+    if (k === "setmana") v = normWeek(v);
+    r[k] = v;
+    if (el.value !== v) el.value = v;
+    saveRows(); prepare();
+  });
+  cards.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.tagName === "TEXTAREA") { e.preventDefault(); e.target.blur(); }
+  });
+
+  // Hide the bottom bar while typing so it does not ride on top of the keyboard.
+  let typingTimer = 0;
+  document.addEventListener("focusin", (e) => {
+    if (e.target.matches("input:not([type=date]), textarea")) { clearTimeout(typingTimer); document.body.classList.add("typing"); }
+  });
+  document.addEventListener("focusout", () => { typingTimer = setTimeout(() => document.body.classList.remove("typing"), 150); });
+
+  // ---------- generate
+  async function generate() {
+    if (busy) return;
+    const text = ta.value.trim();
+    if (!text) { setStatus("Primer prem «Grava» i explica què ha passat.", "err"); return; }
+    busy = true; genBtn.disabled = true; micBtn.disabled = true; setStatus("Escrivint les files…");
+    try {
+      const prompt = FORMAT + "\n" + calendarLine() + "\nDictat: «" + text.slice(0, 6000) + "»";
+      const list = toList(await runGemini(prompt));
+      if (!list.length) throw uerr("No s’ha trobat cap fila al dictat. Torna-ho a provar.");
+      const added = list.slice(0, 30).map(normRow);
+      rows = rows.filter((r) => !r.example).concat(added);
+      store.set("started", true);
+      saveRows(); render(added.map((r) => r.id));
+      lastDictation = text; ta.value = ""; saveDraft();
+      const n = added.length;
+      setStatus((n === 1 ? "1 fila nova" : n + " files noves") + ". Si vols, escriu-hi el nom i exporta.", "ok",
+        [["Recupera el dictat", () => { ta.value = lastDictation; saveDraft(); }]]);
+      const first = cards.querySelector(".row-card.fresh");
+      if (first) first.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    } catch (e) {
+      setStatus((e && e.userMsg) || "Error inesperat: " + ((e && e.message) || e), "err");
+    } finally {
+      busy = false; genBtn.disabled = false; micBtn.disabled = false;
+    }
+  }
+  genBtn.addEventListener("click", generate);
+  ta.addEventListener("input", saveDraft);
+
+  // ---------- microphone: the browser's own speech recognition, one phrase at a time (steadier on phones)
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let lang = store.get("lang", "es") === "ca" ? "ca" : "es";
+  let rec = null, recording = false, wantGen = false, base = "", lastInterim = "";
+  const MIC_ERR = {
+    "not-allowed": "El navegador no deixa fer servir el micròfon. Dona-li permís i torna-ho a provar.",
+    "service-not-allowed": "Aquest navegador no ofereix reconeixement de veu. Prova amb Chrome o Safari, o dicta amb el micròfon del teclat.",
+    "audio-capture": "No es troba cap micròfon.",
+    "network": "El reconeixement de veu necessita connexió a internet.",
+    "language-not-supported": "Aquest navegador no reconeix aquest idioma per veu. Canvia d’idioma.",
+  };
+  const joinText = (a, b) => (a && b ? a + " " + b : a || b).trim();
+  function setMicUI(on) {
+    micBtn.classList.toggle("on", on);
+    micBtn.setAttribute("aria-pressed", String(on));
+    $("#micLabel").textContent = on ? "Atura" : "Grava";
+  }
+  function listen() {
+    rec = new SR();
+    rec.lang = lang === "ca" ? "ca-ES" : "es-ES";
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.onresult = (e) => {
+      let fin = "", interim = "";
+      for (let i = 0; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) fin += r[0].transcript; else interim += r[0].transcript;
+      }
+      ta.value = joinText(base, fin);
+      lastInterim = interim;
+      interimEl.textContent = interim;
+    };
+    rec.onerror = (e) => {
+      if (e.error === "no-speech" || e.error === "aborted") return;
+      recording = false; wantGen = false;
+      setStatus(MIC_ERR[e.error] || "El micròfon ha fallat (" + e.error + ").", "err");
+    };
+    rec.onend = () => {
+      if (!wantGen && lastInterim) ta.value = joinText(ta.value, lastInterim);
+      base = ta.value.trim(); lastInterim = ""; interimEl.textContent = ""; saveDraft();
+      if (recording) { try { listen(); return; } catch (_) { recording = false; } } // keep listening after each pause
+      setMicUI(false);
+      const go = wantGen && base;
+      wantGen = false;
+      if (go) generate();
+    };
+    rec.start();
+  }
+  function startMic() {
+    if (recording || busy) return;
+    if (!getKey()) { $("#setup").hidden = false; $("#setupKey").focus(); setStatus("Primer enganxa la clau de Gemini.", "err"); return; }
+    base = ta.value.trim(); lastInterim = "";
+    recording = true; wantGen = false; setMicUI(true);
+    setStatus("T’escolto en " + (lang === "es" ? "castellà" : "català") + "… Prem «Atura» quan acabis.");
+    try { listen(); } catch (_) { recording = false; setMicUI(false); setStatus("No s’ha pogut engegar el micròfon.", "err"); }
+  }
+  function stopMic() {
+    if (!recording) return;
+    recording = false; wantGen = true;
+    if (lastInterim) { ta.value = joinText(ta.value, lastInterim); lastInterim = ""; }
+    try { rec.stop(); } catch (_) {}
+  }
+  if (!SR) {
+    micBtn.hidden = true;
+    $("#micHint").textContent = "Toca el quadre i dicta amb el micròfon del teclat; després prem «Genera les files».";
+  }
+  micBtn.addEventListener("click", () => (recording ? stopMic() : startMic()));
+  function renderLang() { $$(".seg [data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang))); }
+  $$(".seg [data-lang]").forEach((b) => b.addEventListener("click", () => {
+    lang = b.dataset.lang; store.set("lang", lang); renderLang();
+    if (recording && rec) { try { rec.stop(); } catch (_) {} } // the next phrase starts in the new language
+  }));
+
+  // ---------- export: the file is prepared ahead so the share sheet opens straight from the tap
+  let prepared = null, prepTimer = 0;
+  const sig = () => JSON.stringify(rows.filter((r) => !r.example));
+  function prepare() {
+    clearTimeout(prepTimer);
+    prepTimer = setTimeout(async () => {
+      const mine = rows.filter((r) => !r.example);
+      if (!mine.length || !window.JSZip) { prepared = null; return; }
+      const s = sig();
+      try { prepared = { sig: s, blob: await buildXlsx(mine) }; } catch (_) { prepared = null; }
+    }, 150);
+  }
+  function stamp() { const d = new Date(); return isoDate(d) + " " + pad(d.getHours()) + pad(d.getMinutes()); }
+  function download(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.rel = "noopener";
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  dlBtn.addEventListener("click", async () => {
+    const mine = rows.filter((r) => !r.example);
+    if (!mine.length) { toast("Encara no hi ha cap fila per exportar."); return; }
+    if (!window.JSZip) { setBarNote("No s’ha pogut preparar l’Excel. Comprova internet i torna a carregar la pàgina.", "err"); return; }
+    const filename = "Registre tutorial " + stamp() + ".xlsx";
+    try {
+      const blob = prepared && prepared.sig === sig() ? prepared.blob : await buildXlsx(mine);
+      const file = typeof File === "function" ? new File([blob], filename, { type: XLSX_MIME }) : null;
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: filename });
+          setBarNote("Fet. Quan l’hagis passat al registre, prem «Buida».", "ok");
+          return;
+        } catch (e) {
+          if (e && e.name === "AbortError") { setBarNote("Cancel·lat."); return; }
+        }
+      }
+      download(blob, filename);
+      setBarNote("Desat a Baixades: " + filename + ". Quan l’hagis passat al registre, prem «Buida».", "ok");
+    } catch (_) {
+      setBarNote("No s’ha pogut crear l’Excel.", "err");
+    }
+  });
+
+  let clearArmed = 0;
+  $("#clearAll").addEventListener("click", (e) => {
+    const b = e.currentTarget;
+    if (Date.now() - clearArmed < 4000) {
+      rows = []; store.set("started", true); saveRows(); render();
+      clearArmed = 0; b.textContent = "Buida"; setBarNote("El nom només va a l’Excel: no s’envia a Gemini.");
+      toast("S’han esborrat totes les files.");
+      return;
+    }
+    clearArmed = Date.now(); b.textContent = "Segur? Torna-hi";
+    setTimeout(() => { if (clearArmed && Date.now() - clearArmed >= 4000) { clearArmed = 0; b.textContent = "Buida"; } }, 4100);
+  });
+
+  // ---------- key setup and settings
+  async function saveKey(k, statusId) {
+    const st = $(statusId);
+    if (!k) { st.className = "status err"; st.textContent = "Enganxa primer la clau."; return; }
+    store.set("key", k); renderEngine();
+    st.className = "status"; st.textContent = "Comprovant la clau…";
+    const r = await checkKey(k);
+    st.className = "status " + (r.ok ? "ok" : "err");
+    st.textContent = r.ok ? "Clau correcta. Ja pots gravar." : r.msg;
+    if (r.ok && statusId === "#setupStatus") { $("#setup").hidden = true; toast("Clau desada. Ja pots gravar."); }
+  }
+  $("#setupSave").addEventListener("click", () => saveKey($("#setupKey").value.trim(), "#setupStatus"));
+  function openSettings() {
+    $("#keyInput").value = getKey();
+    $("#modelsInput").value = getModels().join(", ");
+    $("#keyStatus").textContent = "";
+    const u = store.get("usage", {}) || {};
+    const same = u.day === quotaDay();
+    $("#usageText").textContent = "Avui: " + (same ? u.req : 0) + " peticions · " + (same ? u.tok : 0).toLocaleString("ca-ES") + " tokens.";
+    try { dlg.showModal(); } catch (_) { dlg.setAttribute("open", ""); }
+  }
+  function saveModels() {
+    const list = $("#modelsInput").value.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
+    if (!list.length || list.join() === DEFAULT_MODELS.join()) store.del("models"); else store.set("models", list);
+  }
+  $("#engineChip").addEventListener("click", openSettings);
+  $("#setClose").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("close", saveModels);
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+  $("#keyToggle").addEventListener("click", () => {
+    const i = $("#keyInput"), show = i.type === "password";
+    i.type = show ? "text" : "password";
+    $("#keyToggle").textContent = show ? "Amaga" : "Mostra";
+  });
+  $("#keySave").addEventListener("click", () => saveKey($("#keyInput").value.trim(), "#keyStatus"));
+  $("#keyDelete").addEventListener("click", () => {
+    store.del("key"); $("#keyInput").value = ""; renderEngine();
+    $("#keyStatus").className = "status ok"; $("#keyStatus").textContent = "Clau esborrada d’aquest dispositiu.";
+  });
+  $("#modelsReset").addEventListener("click", () => {
+    $("#modelsInput").value = DEFAULT_MODELS.join(", ");
+    store.del("models"); store.del("exhausted");
+  });
+  $("#shareCfg").addEventListener("click", async () => {
+    const k = getKey();
+    if (!k) { $("#keyStatus").className = "status err"; $("#keyStatus").textContent = "Primer desa una clau."; return; }
+    const link = location.origin + location.pathname + "#clau=" + encodeURIComponent(k);
+    try {
+      if (navigator.share) { await navigator.share({ title: "Registre tutorial", url: link }); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(link); toast("Enllaç copiat. Envia-te’l per WhatsApp o correu i obre’l al mòbil."); }
+    catch (_) { $("#keyStatus").className = "status"; $("#keyStatus").textContent = link; }
+  });
+
+  // ---------- start
+  const fromLink = /[#&]clau=([^&]+)/.exec(location.hash);
+  if (fromLink) {
+    try { store.set("key", decodeURIComponent(fromLink[1]).trim()); } catch (_) {}
+    history.replaceState(null, "", location.pathname + location.search);
+    toast("Clau desada en aquest dispositiu. Ja pots gravar.");
+  }
+  ta.value = store.get("draft", "") || "";
+  renderLang(); renderEngine(); render();
+})();
+</script>
+</body>
+</html>
