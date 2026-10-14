@@ -2,7 +2,7 @@
 <html lang="ca">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-gpohop6PAQa+4DOQL7PX1zf4fPSkn3CrJmiaKl4ebx4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://generativelanguage.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-QG3bhAUD5shZfHoAiFx6VofP9DrVgKFoJEwcKiREtDc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://generativelanguage.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1D4A39">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -209,7 +209,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
         <li>Obre l’Excel, copia les files i enganxa-les al registre a partir de la columna A.</li>
         <li>A l’ordinador també pots prémer «Copia B–F» en una fila i enganxar-la a la columna B de l’alumne, al teu registre.</li>
       </ol>
-      <p>Si no dius la setmana de detecció o la data del contacte, queden en blanc perquè les omplis tu.</p>
+      <p>Si dius quan te’n vas adonar, la setmana de detecció és la d’aquell dia; si no, la del primer contacte. Si no dius cap data, queden en blanc perquè les omplis tu.</p>
       <p>La veu la transcriu el navegador i el text s’envia a Gemini (capa gratuïta de Google) per omplir les columnes. Les files i la clau es queden en aquest dispositiu. No diguis DNI ni diagnòstics.</p>
     </div>
   </details>
@@ -269,15 +269,15 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
 
   // Short on purpose: it goes with every request.
   const SYS = [
-    "Omples el «Registre de seguiment de les accions tutorials» d'un centre de formació d'adults a partir del dictat d'un tutor (en català o castellà; pot tenir errors de transcripció). Escriu sempre en català, en estil de registre: frases curtes i telegràfiques acabades en punt.",
+    "Omples el «Registre de seguiment de les accions tutorials» d'un centre de formació d'adults a partir del dictat d'un tutor (en català o castellà; pot tenir errors de transcripció). Escriu sempre en català, en to de registre administratiu però complet: recull tots els detalls que es diguin (motius, circumstàncies, intents de contacte amb data i mitjà, què ha dit l'alumne, acords, compromisos, terminis i properes passes), en frases completes i clares acabades en punt.",
     "Fes una fila per alumne i acció, en l'ordre del dictat.",
     "ref: com s'anomena l'alumne al dictat («alumne 1», «el segon», inicials); mai un nom complet.",
-    "setmana: setmana o període en què es va detectar l'absència, «dd/mm-dd/mm»; buit si no es diu.",
-    "data: data del primer contacte o intent, «dd/mm/aaaa»; buit si no es diu.",
+    "setmana: quan es va detectar l'absència. Si es dicta un període explícit, «dd/mm-dd/mm». Si es diu un dia o una setmana («me'n vaig adonar dilluns», «des del dia 15», «la setmana passada»), posa aquell dia com a «dd/mm/aaaa» (d'una setmana, el seu dilluns). Buit si no es diu.",
+    "data: data del primer contacte o intent, «dd/mm/aaaa». Si només es diu el dia del mes («el 22»), és el d'aquest mes, o del mes anterior si encara no ha arribat. Buit si no es diu.",
     "mitja: Trucada, Correu, Missatge (WhatsApp, SMS, Classroom…), Presencial, Videotrucada, o «—» si el tutor no ha contactat (p. ex. l'alumne ja havia avisat).",
-    "resum: resposta de l'alumne o motiu de l'absència. Si no contesta: «Sense resposta.» i els intents següents amb data («2n intent trucada 16/10. Sense resposta.»).",
-    "acord: acord i/o data prevista d'incorporació («S'incorporarà el 02/11.», «Canvi provisional al grup de matí.», «Derivat a coordinació.»); buit si no n'hi ha.",
-    "No inventis res. Cap nom de persona. Salut: només «Baixa mèdica» o «Motius de salut», sense diagnòstics.",
+    "resum: resposta de l'alumne o motiu de l'absència, amb tots els detalls que s'hagin dit. Si no contesta: «Sense resposta.» i cada intent posterior amb data i mitjà.",
+    "acord: acords, compromisos i data prevista d'incorporació, amb tots els detalls dits (canvi de grup, derivació, seguiment previst…); buit si no n'hi ha.",
+    "No inventis res que no s'hagi dit. Cap nom de persona. Salut: només «Baixa mèdica» o «Motius de salut», sense diagnòstics.",
   ].join("\n");
   const FORMAT = 'Respon només amb JSON: {"files":[{"ref":"","setmana":"","data":"","mitja":"","resum":"","acord":""}]}';
   const STR = { type: "STRING" };
@@ -338,6 +338,10 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     let d, mo, y;
     let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
     if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else if ((m = /^(\d{1,2})$/.exec(s))) { // only the day ("el 22"): this month, or last month if that day is still to come
+      const t = new Date(); d = +m[1]; mo = t.getMonth() + 1; y = t.getFullYear();
+      if (d > t.getDate()) { mo -= 1; if (mo < 1) { mo = 12; y -= 1; } }
+    }
     else {
       m = /^(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?$/.exec(s);
       if (!m) return "";
@@ -358,14 +362,31 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   }
   const endDot = (s) => (s && !/[.!?…)»"]$/.test(s) ? s + "." : s);
   const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+  // Monday–Friday week that holds a dd/mm/yyyy date, as "dd/mm-dd/mm".
+  function weekOf(s) {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s || "");
+    if (!m) return "";
+    const t = new Date(+m[3], +m[2] - 1, +m[1]);
+    const mon = addDays(t, -((t.getDay() + 6) % 7));
+    return dm(mon) + "-" + dm(addDays(mon, 4));
+  }
+  // The model gives the detection week as a range, or as the day it was noticed; the week is worked out here.
+  function weekFrom(s) {
+    if (!s) return "";
+    if (/^\d{1,2}\/\d{1,2}\s*[-–—]/.test(s)) return normWeek(s);
+    const d = normDate(s);
+    return d ? weekOf(d) : s;
+  }
   function normRow(r) {
     const o = r && typeof r === "object" ? r : {};
+    const data = normDate(clean(o.data));
     return {
       id: uid(),
       ref: clean(o.ref).slice(0, 40) || "alumne/a",
       nom: "",
-      setmana: normWeek(clean(o.setmana)), // left blank when not dictated: the register never gets invented dates
-      data: normDate(clean(o.data)),
+      // Detection not dictated: the week of the first contact. No dates at all: left blank, never invented.
+      setmana: weekFrom(clean(o.setmana)) || weekOf(data),
+      data,
       mitja: normMitja(clean(o.mitja)),
       resum: endDot(clean(o.resum)),
       acord: endDot(clean(o.acord)),
