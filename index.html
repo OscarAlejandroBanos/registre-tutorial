@@ -2,7 +2,7 @@
 <html lang="ca">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-KM1vvF2mrKwnDVcrwBxFkEdFYnHabyyu9vagfId9go0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://generativelanguage.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-cPp9rwu1msk+NdZgXm/GFw97mG8xwqLuvBzfBq35M44='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://generativelanguage.googleapis.com https://api.anthropic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1D4A39">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -73,6 +73,8 @@ h3 { margin: 16px 0 6px; font: 700 15px/1.3 var(--display); }
 .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 9px; overflow: hidden; }
 .seg button { padding: 7px 12px; border: 0; background: transparent; color: var(--muted); font: 700 14px var(--body); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--board); color: var(--board-ink); }
+.engine-seg { display: grid; grid-template-columns: 1fr 1fr; }
+.engine-seg button { padding: 9px 10px; line-height: 1.25; }
 
 .mic { display: flex; width: 100%; align-items: center; justify-content: center; gap: 10px; padding: 18px 16px; border: 2px solid var(--rec); border-radius: 16px; background: var(--sheet); color: var(--rec); font: 800 21px/1 var(--display); cursor: pointer; }
 .mic svg { width: 26px; height: 26px; }
@@ -160,10 +162,14 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   </header>
 
   <section class="card setup" id="setup" hidden>
-    <h2>Primer cop: la clau gratuïta de Gemini</h2>
-    <p>Crea-la a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> amb el teu compte de Google i enganxa-la aquí. Fes-la en un projecte <b>sense facturació</b>: així és gratuïta i no et poden cobrar res. Es desa només en aquest dispositiu.</p>
+    <h2>Primer cop: tria la IA i enganxa’n la clau</h2>
+    <div class="seg engine-seg" role="group" aria-label="IA que omple les files">
+      <button type="button" data-engine="gemini" aria-pressed="true">Gemini · gratuït</button>
+      <button type="button" data-engine="claude" aria-pressed="false">Claude Haiku · de pagament</button>
+    </div>
+    <p class="key-help"></p>
     <div class="row">
-      <input id="setupKey" type="password" autocomplete="off" spellcheck="false" placeholder="Enganxa la clau (AIza…)" aria-label="Clau de Gemini">
+      <input id="setupKey" type="password" autocomplete="off" spellcheck="false" aria-label="Clau de la IA">
       <button class="btn primary" id="setupSave" type="button">Desa</button>
     </div>
     <p class="status" id="setupStatus" role="status"></p>
@@ -204,13 +210,13 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     <div class="help-body">
       <ol>
         <li>Prem «Grava», explica què ha passat (pots parlar de diversos alumnes) i prem «Atura».</li>
-        <li>Si vols, escriu el nom de cada alumne a la seva fila. El nom no s’envia a Gemini: només va a l’Excel.</li>
+        <li>Si vols, escriu el nom de cada alumne a la seva fila. El nom no s’envia a la IA: només va a l’Excel.</li>
         <li>Prem «Exporta a Excel». A l’iPhone s’obre el menú de compartir (correu, WhatsApp o Fitxers); a l’Android i a l’ordinador va a Baixades.</li>
         <li>Obre l’Excel, copia les files i enganxa-les al registre a partir de la columna A.</li>
         <li>A l’ordinador també pots prémer «Copia B–F» en una fila i enganxar-la a la columna B de l’alumne, al teu registre.</li>
       </ol>
       <p>Si dius quan te’n vas adonar, la setmana de detecció és la d’aquell dia; si no, la del primer contacte. Si no dius cap data, queden en blanc perquè les omplis tu.</p>
-      <p>La veu la transcriu el navegador i el text s’envia a Gemini (capa gratuïta de Google) per omplir les columnes. Les files i la clau es queden en aquest dispositiu. No diguis noms ni DNI.</p>
+      <p>La veu la transcriu el navegador i el text s’envia a la IA que triïs (Gemini o Claude) per omplir les columnes. Les files i les claus es queden en aquest dispositiu. No diguis noms ni DNI.</p>
     </div>
   </details>
 </div>
@@ -218,16 +224,22 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
 <div class="bar">
   <div class="bar-in">
     <button class="btn primary big" id="dlBtn" type="button">Exporta a Excel</button>
-    <p class="bar-note" id="barNote">El nom només va a l’Excel: no s’envia a Gemini.</p>
+    <p class="bar-note" id="barNote">El nom només va a l’Excel: no s’envia a la IA.</p>
   </div>
 </div>
 
 <dialog id="settings" aria-labelledby="setTitle">
   <div class="dlg">
     <div class="dlg-head"><h2 id="setTitle">Configuració</h2><button class="btn ghost" id="setClose" type="button">Tanca</button></div>
-    <h3>Clau de Gemini</h3>
+    <h3>IA que omple les files</h3>
+    <div class="seg engine-seg" role="group" aria-label="IA que omple les files">
+      <button type="button" data-engine="gemini" aria-pressed="true">Gemini · gratuït</button>
+      <button type="button" data-engine="claude" aria-pressed="false">Claude Haiku · de pagament</button>
+    </div>
+    <h3 id="keyTitle">Clau de Gemini</h3>
+    <p class="key-help small"></p>
     <div class="keyrow">
-      <input id="keyInput" type="password" autocomplete="off" spellcheck="false" aria-label="Clau de Gemini">
+      <input id="keyInput" type="password" autocomplete="off" spellcheck="false" aria-label="Clau de la IA">
       <button class="btn" id="keyToggle" type="button">Mostra</button>
     </div>
     <div class="btnrow">
@@ -235,11 +247,12 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
       <button class="btn ghost" id="keyDelete" type="button">Esborra-la</button>
     </div>
     <p class="status" id="keyStatus" role="status"></p>
-    <p class="small">La clau es desa només en aquest dispositiu i només s’envia a Google. És gratuïta si el projecte no té la facturació activada; la pàgina no ho pot comprovar.</p>
-    <h3>Models</h3>
-    <p class="small">En ordre de preferència. Si un esgota la quota gratuïta del dia, es fa servir el següent (es renova cap a les 9:00).</p>
-    <input id="modelsInput" autocomplete="off" spellcheck="false" aria-label="Models de Gemini">
-    <div class="btnrow"><button class="btn ghost" id="modelsReset" type="button">Restaura els models</button></div>
+    <div id="geminiModels">
+      <h3>Models de Gemini</h3>
+      <p class="small">En ordre de preferència. Si un esgota la quota gratuïta del dia, es fa servir el següent (es renova cap a les 9:00).</p>
+      <input id="modelsInput" autocomplete="off" spellcheck="false" aria-label="Models de Gemini">
+      <div class="btnrow"><button class="btn ghost" id="modelsReset" type="button">Restaura els models</button></div>
+    </div>
     <p class="small" id="usageText"></p>
   </div>
 </dialog>
@@ -297,6 +310,32 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
       },
     },
     required: ["files"],
+  };
+  // Claude: same fields, as standard JSON Schema for structured outputs (every object closed).
+  const CLAUDE_API = "https://api.anthropic.com/v1";
+  const CLAUDE_MODEL = "claude-haiku-5-5";
+  const CLAUDE_PRICE = { input: 0.10, output: 0.50 }; // $ per million tokens
+  const CLAUDE_HEADERS = (key) => ({
+    "x-api-key": key,
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true", // the page calls the API straight from the browser
+  });
+  const CLAUDE_SCHEMA = {
+    type: "object", additionalProperties: false, required: ["files"],
+    properties: {
+      files: {
+        type: "array",
+        items: {
+          type: "object", additionalProperties: false,
+          required: ["ref", "setmana", "data", "mitja", "resum", "acord", "canvi_grup"],
+          properties: {
+            ref: { type: "string" }, setmana: { type: "string" }, data: { type: "string" },
+            mitja: { type: "string", enum: MITJANS }, resum: { type: "string" }, acord: { type: "string" },
+            canvi_grup: { type: "boolean" },
+          },
+        },
+      },
+    },
   };
 
   // ---------- dates
@@ -422,7 +461,9 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   const short = (s) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > 160 ? s.slice(0, 157) + "…" : s; };
 
   // ---------- Gemini (free tier)
-  const getKey = () => String(store.get("key", "") || "").trim();
+  let engine = store.get("engine", "gemini") === "claude" ? "claude" : "gemini";
+  const KEY_SLOT = { gemini: "key", claude: "ckey" }; // each AI keeps its own key
+  const getKey = (eng) => String(store.get(KEY_SLOT[eng || engine], "") || "").trim();
   function getModels() { const v = store.get("models", null); return Array.isArray(v) && v.length ? v : DEFAULT_MODELS; }
   function thinkingFor(model) {
     if (/lite/i.test(model)) return null; // Flash-Lite already thinks minimally
@@ -450,7 +491,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     finally { clearTimeout(t); }
   }
   async function runGemini(prompt) {
-    const key = getKey();
+    const key = getKey("gemini");
     if (!key) { $("#setup").hidden = false; throw uerr("Primer enganxa la clau de Gemini (a dalt)."); }
     const day = quotaDay();
     const exhausted = store.get("exhausted", {}) || {};
@@ -515,10 +556,60 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
       return { ok: false, msg: "No hi ha connexió amb Google." };
     }
   }
-  function bumpUsage(tokens) {
+  // ---------- Claude Haiku (paid, through the Anthropic API)
+  async function runClaude(prompt) {
+    const key = getKey("claude");
+    if (!key) { $("#setup").hidden = false; throw uerr("Primer enganxa la clau de Claude (a dalt)."); }
+    let res, data;
+    try {
+      res = await fetchT(CLAUDE_API + "/messages", {
+        method: "POST",
+        headers: Object.assign({ "content-type": "application/json" }, CLAUDE_HEADERS(key)),
+        body: JSON.stringify({
+          model: CLAUDE_MODEL,
+          max_tokens: 16000,
+          system: SYS,
+          messages: [{ role: "user", content: prompt }],
+          output_config: { format: { type: "json_schema", schema: CLAUDE_SCHEMA } },
+        }),
+      }, 90000);
+      data = await res.json().catch(() => ({}));
+    } catch (e) {
+      throw uerr(e && e.name === "AbortError" ? "Claude triga massa a respondre. Torna-ho a provar." : "No hi ha connexió amb Claude. Comprova internet i torna-ho a provar.");
+    }
+    if (!res.ok) {
+      const msg = (data.error && data.error.message) || res.statusText || "";
+      if (res.status === 401) throw uerr("La clau de Claude no és vàlida. Canvia-la a Configuració (botó de dalt).");
+      if (/credit balance/i.test(msg)) throw uerr("No et queda saldo a Claude. Afegeix-ne a platform.claude.com (Billing).");
+      if (res.status === 429) throw uerr("Massa peticions seguides o límit de despesa assolit. Espera una mica i torna-ho a provar.");
+      if (res.status === 529 || res.status >= 500) throw uerr("Claude està saturat ara mateix. Torna-ho a provar d’aquí a un moment.");
+      throw uerr("Claude ha respost " + res.status + ": " + short(msg));
+    }
+    // Never keep half a register or a declined answer.
+    if (data.stop_reason === "refusal") throw uerr("Claude no ha processat aquest dictat. Reformula’l.");
+    if (data.stop_reason === "max_tokens") throw uerr("La resposta de Claude ha quedat incompleta. Torna-ho a provar o divideix el dictat.");
+    const parsed = parseLoose((data.content || []).filter((b) => b.type === "text").map((b) => b.text).join(""));
+    if (!parsed) throw uerr("Claude no ha tornat una resposta vàlida. Torna-ho a provar.");
+    const u = data.usage || {};
+    const inTok = Number(u.input_tokens) || 0, outTok = Number(u.output_tokens) || 0;
+    bumpUsage(inTok + outTok, (inTok * CLAUDE_PRICE.input + outTok * CLAUDE_PRICE.output) / 1e6);
+    return parsed;
+  }
+  async function checkClaudeKey(key) {
+    try {
+      const r = await fetchT(CLAUDE_API + "/models?limit=1", { headers: CLAUDE_HEADERS(key) }, 15000);
+      if (r.ok) return { ok: true };
+      if (r.status === 401) return { ok: false, msg: "Aquesta clau de Claude no és vàlida. Torna-la a copiar." };
+      const j = await r.json().catch(() => ({}));
+      return { ok: false, msg: "Anthropic ha respost " + r.status + ": " + short((j.error && j.error.message) || r.statusText) };
+    } catch (_) {
+      return { ok: false, msg: "No hi ha connexió amb Anthropic." };
+    }
+  }
+  function bumpUsage(tokens, usd) {
     let u = store.get("usage", {}) || {};
-    if (u.day !== quotaDay()) u = { day: quotaDay(), req: 0, tok: 0 };
-    u.req += 1; u.tok += Number(tokens) || 0;
+    if (u.day !== quotaDay()) u = { day: quotaDay(), req: 0, tok: 0, usd: 0 };
+    u.req += 1; u.tok += Number(tokens) || 0; u.usd = (Number(u.usd) || 0) + (Number(usd) || 0);
     store.set("usage", u);
   }
 
@@ -636,11 +727,21 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     const t = $("#toast"); t.textContent = msg; t.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
   }
+  const KEY_HELP = {
+    gemini: 'Crea-la a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> amb el teu compte de Google, en un projecte <b>sense facturació</b>: així és gratuïta i no et poden cobrar res. Es desa només en aquest dispositiu.',
+    claude: 'Crea-la a <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener">platform.claude.com</a> (Settings → API keys). És <b>de pagament</b>, uns 0,0004 $ per dictat: carrega-hi poc saldo i posa un <a href="https://platform.claude.com/settings/limits" target="_blank" rel="noopener">límit de despesa</a>. Es desa només en aquest dispositiu.',
+  };
   function renderEngine() {
     const has = !!getKey();
-    $("#engineText").textContent = has ? "Gemini" : "Falta la clau";
+    $("#engineText").textContent = has ? (engine === "claude" ? "Claude Haiku" : "Gemini") : "Falta la clau";
     $("#engineChip").classList.toggle("missing", !has);
     $("#setup").hidden = has;
+    $$(".engine-seg [data-engine]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.engine === engine)));
+    $$(".key-help").forEach((p) => { p.innerHTML = KEY_HELP[engine]; });
+    $("#keyTitle").textContent = engine === "claude" ? "Clau de Claude" : "Clau de Gemini";
+    const ph = engine === "claude" ? "Enganxa la clau (sk-ant-…)" : "Enganxa la clau (AIza…)";
+    $("#setupKey").placeholder = ph; $("#keyInput").placeholder = ph;
+    $("#geminiModels").hidden = engine !== "gemini";
   }
 
   // ---------- cards
@@ -783,7 +884,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     busy = true; genBtn.disabled = true; micBtn.disabled = true; setStatus("Escrivint les files…");
     try {
       const prompt = FORMAT + "\n" + calendarLine() + "\nDictat: «" + text + "»";
-      const list = toList(await runGemini(prompt));
+      const list = toList(await (engine === "claude" ? runClaude(prompt) : runGemini(prompt)));
       if (!list.length) throw uerr("No s’ha trobat cap fila al dictat. Torna-ho a provar.");
       const added = list.slice(0, 30).map(normRow);
       rows = rows.filter((r) => !r.example).concat(added);
@@ -854,7 +955,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   }
   function startMic() {
     if (recording || busy) return;
-    if (!getKey()) { $("#setup").hidden = false; $("#setupKey").focus(); setStatus("Primer enganxa la clau de Gemini.", "err"); return; }
+    if (!getKey()) { $("#setup").hidden = false; $("#setupKey").focus(); setStatus("Primer enganxa la clau de la IA.", "err"); return; }
     base = ta.value.trim(); lastInterim = "";
     recording = true; wantGen = false; setMicUI(true);
     setStatus("T’escolto en " + (lang === "es" ? "castellà" : "català") + "… Prem «Atura» quan acabis.");
@@ -926,7 +1027,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     const b = e.currentTarget;
     if (Date.now() - clearArmed < 4000) {
       rows = []; store.set("started", true); saveRows(); render();
-      clearArmed = 0; b.textContent = "Buida"; setBarNote("El nom només va a l’Excel: no s’envia a Gemini.");
+      clearArmed = 0; b.textContent = "Buida"; setBarNote("El nom només va a l’Excel: no s’envia a la IA.");
       toast("S’han esborrat totes les files.");
       return;
     }
@@ -939,9 +1040,10 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     const st = $(statusId);
     if (!k) { st.className = "status err"; st.textContent = "Enganxa primer la clau."; return; }
     st.className = "status"; st.textContent = "Comprovant la clau…";
-    const r = await checkKey(k); // a key that fails the check never replaces the saved one
-    if (!r.ok) { st.className = "status err"; st.textContent = r.msg + (getKey() ? " Es manté la clau anterior." : ""); return; }
-    store.set("key", k); renderEngine();
+    const eng = engine;
+    const r = await (eng === "claude" ? checkClaudeKey(k) : checkKey(k)); // a key that fails the check never replaces the saved one
+    if (!r.ok) { st.className = "status err"; st.textContent = r.msg + (getKey(eng) ? " Es manté la clau anterior." : ""); return; }
+    store.set(KEY_SLOT[eng], k); renderEngine();
     st.className = "status ok"; st.textContent = "Clau correcta. Ja pots gravar.";
     if (statusId === "#setupStatus") { $("#setup").hidden = true; toast("Clau desada. Ja pots gravar."); }
   }
@@ -952,9 +1054,17 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
     $("#keyStatus").textContent = "";
     const u = store.get("usage", {}) || {};
     const same = u.day === quotaDay();
-    $("#usageText").textContent = "Avui: " + (same ? u.req : 0) + " peticions · " + (same ? u.tok : 0).toLocaleString("ca-ES") + " tokens.";
+    const usd = same ? Number(u.usd) || 0 : 0;
+    $("#usageText").textContent = "Avui: " + (same ? u.req : 0) + " peticions · " + (same ? u.tok : 0).toLocaleString("ca-ES") + " tokens" +
+      (usd ? " · Claude ≈ " + usd.toLocaleString("ca-ES", { maximumFractionDigits: 4 }) + " $" : "") + ".";
     try { dlg.showModal(); } catch (_) { dlg.setAttribute("open", ""); }
   }
+  // Switching AI: each one keeps its own key, so going back and forth never asks for it again.
+  $$(".engine-seg [data-engine]").forEach((b) => b.addEventListener("click", () => {
+    engine = b.dataset.engine; store.set("engine", engine);
+    $("#keyInput").value = getKey(); $("#keyStatus").textContent = ""; $("#setupStatus").textContent = "";
+    renderEngine();
+  }));
   function saveModels() {
     const list = $("#modelsInput").value.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
     if (!list.length || list.join() === DEFAULT_MODELS.join()) store.del("models"); else store.set("models", list);
@@ -970,7 +1080,7 @@ dialog::backdrop { background: rgb(10 20 15 / .45); }
   });
   $("#keySave").addEventListener("click", () => saveKey($("#keyInput").value.trim(), "#keyStatus"));
   $("#keyDelete").addEventListener("click", () => {
-    store.del("key"); $("#keyInput").value = ""; renderEngine();
+    store.del(KEY_SLOT[engine]); $("#keyInput").value = ""; renderEngine();
     $("#keyStatus").className = "status ok"; $("#keyStatus").textContent = "Clau esborrada d’aquest dispositiu.";
   });
   $("#modelsReset").addEventListener("click", () => {
